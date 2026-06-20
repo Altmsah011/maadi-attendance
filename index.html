@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#234f3a">
+<title>تسجيل الحضور والانصراف</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root {
+    --ink: #1c1f26;
+    --paper: #f6f4ef;
+    --card: #ffffff;
+    --line: #e3ded2;
+    --moss: #2f6b4f;
+    --moss-dark: #234f3a;
+    --clay: #b5503a;
+    --amber: #b8842a;
+    --muted: #6b6657;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+    min-height: 100vh;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 16px 40px;
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 420px;
+  }
+
+  /* ===== Header ===== */
+  .brand {
+    text-align: center;
+    margin-bottom: 18px;
+  }
+  .brand .clock {
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .brand .title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-top: 4px;
+    color: var(--moss-dark);
+  }
+
+  /* ===== Card ===== */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(28,31,38,0.04);
+  }
+
+  .emp-name {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .emp-id {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+    letter-spacing: 0.5px;
+  }
+
+  .status-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--line);
+  }
+  .status-item {
+    text-align: center;
+    flex: 1;
+  }
+  .status-item .label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .status-item .value {
+    font-size: 17px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .status-item .value.empty { color: var(--line); font-weight: 400; }
+
+  /* ===== Location pill ===== */
+  .loc-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    background: #f1f6f3;
+    color: var(--moss-dark);
+  }
+  .loc-pill.bad { background: #fbf1ee; color: var(--clay); }
+  .loc-pill.wait { background: #f4f1ea; color: var(--muted); }
+  .loc-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--moss);
+    flex-shrink: 0;
+  }
+  .loc-pill.bad .loc-dot { background: var(--clay); }
+  .loc-pill.wait .loc-dot {
+    background: var(--muted);
+    animation: pulse 1.2s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* ===== Comment ===== */
+  .comment-box {
+    margin-top: 14px;
+  }
+  .comment-box textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: none;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .comment-box textarea:focus { outline: 2px solid var(--moss); outline-offset: 1px; }
+  .comment-box label {
+    font-size: 12px;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  /* ===== Buttons ===== */
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    border-radius: 12px;
+    border: none;
+    font-size: 17px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    margin-top: 14px;
+    transition: transform 0.08s ease, opacity 0.15s ease;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .btn-in { background: var(--moss); color: #fff; }
+  .btn-out { background: var(--clay); color: #fff; }
+  .btn-secondary {
+    background: transparent;
+    border: 1.5px solid var(--line);
+    color: var(--ink);
+  }
+
+  /* ===== Tabs ===== */
+  .tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+    background: var(--card);
+    border: 1px solid var(--line);
+    cursor: pointer;
+  }
+  .tab.active {
+    background: var(--moss-dark);
+    color: #fff;
+    border-color: var(--moss-dark);
+  }
+
+  .hidden { display: none !important; }
+
+  /* ===== Leave form ===== */
+  .field { margin-bottom: 14px; }
+  .field label {
+    font-size: 13px;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 6px;
+    color: var(--ink);
+  }
+  .field select, .field input {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .field select:focus, .field input:focus { outline: 2px solid var(--moss); outline-offset: 1px; }
+  .row-2 { display: flex; gap: 10px; }
+  .row-2 .field { flex: 1; }
+
+  /* ===== Leave history ===== */
+  .leave-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .leave-item:last-child { border-bottom: none; }
+  .leave-item .type { font-weight: 600; font-size: 14px; }
+  .leave-item .dates { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+  .badge.Pending { background: #f4ecd9; color: var(--amber); }
+  .badge.Approved { background: #e7f1ea; color: var(--moss-dark); }
+  .badge.Rejected { background: #fbeae6; color: var(--clay); }
+
+  /* ===== Toast ===== */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink);
+    color: #fff;
+    padding: 13px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    max-width: 90%;
+    text-align: center;
+    opacity: 0;
+    transition: all 0.25s ease;
+    pointer-events: none;
+    z-index: 999;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.error { background: var(--clay); }
+  .toast.success { background: var(--moss-dark); }
+
+  .empty-state {
+    text-align: center;
+    padding: 30px 10px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2.5px solid rgba(255,255,255,0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    display: inline-block;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-left: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="brand">
+    <div class="clock" id="liveClock">--:--:--</div>
+    <div class="title">الشئون الإدارية اكسيد</div>
+  </div>
+
+  <div id="loadingState" class="card">
+    <div class="empty-state">جاري تحميل البيانات...</div>
+  </div>
+
+  <div id="errorState" class="card hidden">
+    <div class="empty-state" id="errorText"></div>
+  </div>
+
+  <div id="mainApp" class="hidden">
+
+    <div class="tabs">
+      <div class="tab active" id="tabAttendance" onclick="switchTab('attendance')">الحضور والانصراف</div>
+      <div class="tab" id="tabLeave" onclick="switchTab('leave')">الإجازات</div>
+    </div>
+
+    <!-- ===== Attendance Tab ===== -->
+    <div id="panelAttendance">
+      <div class="card">
+        <div class="emp-name" id="empName">—</div>
+        <div class="emp-id" id="empIdDisplay">—</div>
+
+        <div class="status-row">
+          <div class="status-item">
+            <div class="label">الحضور</div>
+            <div class="value" id="clockInValue">—</div>
+          </div>
+          <div class="status-item">
+            <div class="label">الانصراف</div>
+            <div class="value" id="clockOutValue">—</div>
+          </div>
+          <div class="status-item">
+            <div class="label">الساعات</div>
+            <div class="value" id="totalHoursValue">—</div>
+          </div>
+        </div>
+
+        <div class="loc-pill wait" id="locPill">
+          <span class="loc-dot"></span>
+          <span id="locText">جاري تحديد الموقع...</span>
+        </div>
+
+        <div class="comment-box">
+          <label for="commentInput">ملاحظة (اختياري، مثلاً لو شغال بره موقعك)</label>
+          <textarea id="commentInput" rows="2" placeholder="اكتب ملاحظة..."></textarea>
+        </div>
+
+        <button class="btn btn-in" id="btnClockIn" onclick="doClockIn()" disabled>تسجيل حضور</button>
+        <button class="btn btn-out hidden" id="btnClockOut" onclick="doClockOut()" disabled>تسجيل انصراف</button>
+      </div>
+    </div>
+
+    <!-- ===== Leave Tab ===== -->
+    <div id="panelLeave" class="hidden">
+      <div class="card">
+        <div class="field">
+          <label for="leaveType">نوع الإجازة</label>
+          <select id="leaveType">
+            <option value="Annual">سنوية</option>
+            <option value="Sick">مرضية</option>
+            <option value="Emergency">طارئة</option>
+            <option value="Unpaid">بدون مرتب</option>
+            <option value="Official">رسمية / مناسبات</option>
+          </select>
+        </div>
+        <div class="row-2">
+          <div class="field">
+            <label for="leaveStart">من تاريخ</label>
+            <input type="date" id="leaveStart">
+          </div>
+          <div class="field">
+            <label for="leaveEnd">إلى تاريخ</label>
+            <input type="date" id="leaveEnd">
+          </div>
+        </div>
+        <div class="field">
+          <label for="leaveComment">سبب الإجازة (اختياري)</label>
+          <textarea id="leaveComment" rows="2" placeholder="اكتب السبب..." style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-family:inherit;font-size:14px;resize:none;background:var(--paper);color:var(--ink);"></textarea>
+        </div>
+        <button class="btn btn-in" id="btnSubmitLeave" onclick="submitLeaveRequest()">إرسال طلب الإجازة</button>
+      </div>
+
+      <div class="card">
+        <div style="font-weight:700;font-size:15px;margin-bottom:8px;">رصيد الإجازات</div>
+        <div id="balancesBox"></div>
+      </div>
+
+      <div class="card">
+        <div style="font-weight:700;font-size:15px;margin-bottom:4px;">سجل الطلبات</div>
+        <div id="leaveHistoryBox"><div class="empty-state">جاري التحميل...</div></div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============ الإعدادات ============
+const API_URL = 'https://script.google.com/macros/s/AKfycbzSmXM5n_9pKmD0htkicyy0vtzgT2moOYxbiAw3yPgF_-xDfD1DTz5qdxcY4SmrSHBi/exec';
+
+const params = new URLSearchParams(window.location.search);
+const empId = params.get('emp');
+
+let currentLat = null;
+let currentLng = null;
+let locationReady = false;
+let todayClockedIn = false;
+let todayClockedOut = false;
+
+// ============ الساعة الحية ============
+function updateClock() {
+  const now = new Date();
+  document.getElementById('liveClock').textContent = now.toLocaleTimeString('ar-EG', { hour12: false });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ============ JSONP Helper ============
+function jsonpRequest(action, extraParams = {}) {
+  return new Promise((resolve, reject) => {
+    const callbackName = 'cb_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+    const script = document.createElement('script');
+
+    let url = API_URL + '?action=' + action + '&callback=' + callbackName;
+    for (const key in extraParams) {
+      url += '&' + key + '=' + encodeURIComponent(extraParams[key]);
+    }
+
+    window[callbackName] = function(data) {
+      delete window[callbackName];
+      document.body.removeChild(script);
+      resolve(data);
+    };
+
+    script.onerror = function() {
+      delete window[callbackName];
+      if (script.parentNode) document.body.removeChild(script);
+      reject(new Error('فشل الاتصال بالسيرفر'));
+    };
+
+    script.src = url;
+    document.body.appendChild(script);
+  });
+}
+
+// ============ Toast ============
+function showToast(message, type = '') {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.className = 'toast show ' + type;
+  setTimeout(() => { toast.className = 'toast ' + type; }, 3200);
+}
+
+// ============ تبديل التابات ============
+function switchTab(tab) {
+  document.getElementById('tabAttendance').classList.toggle('active', tab === 'attendance');
+  document.getElementById('tabLeave').classList.toggle('active', tab === 'leave');
+  document.getElementById('panelAttendance').classList.toggle('hidden', tab !== 'attendance');
+  document.getElementById('panelLeave').classList.toggle('hidden', tab !== 'leave');
+  if (tab === 'leave') loadLeaveHistory();
+}
+
+// ============ تحديد الموقع الجغرافي ============
+function requestLocation() {
+  const pill = document.getElementById('locPill');
+  const text = document.getElementById('locText');
+
+  if (!navigator.geolocation) {
+    pill.className = 'loc-pill bad';
+    text.textContent = 'المتصفح لا يدعم تحديد الموقع';
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      currentLat = pos.coords.latitude;
+      currentLng = pos.coords.longitude;
+      locationReady = true;
+      pill.className = 'loc-pill';
+      text.textContent = 'تم تحديد الموقع بنجاح ✓';
+      updateButtonStates();
+    },
+    (err) => {
+      locationReady = false;
+      pill.className = 'loc-pill bad';
+      if (err.code === 1) {
+        text.textContent = 'يجب تفعيل صلاحية الموقع لتسجيل الحضور';
+      } else {
+        text.textContent = 'تعذر تحديد الموقع، حاول مرة أخرى';
+      }
+      updateButtonStates();
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+}
+
+// ============ تحديث حالة الأزرار ============
+function updateButtonStates() {
+  const btnIn = document.getElementById('btnClockIn');
+  const btnOut = document.getElementById('btnClockOut');
+
+  btnIn.disabled = !locationReady || todayClockedIn;
+  btnOut.disabled = !locationReady || !todayClockedIn || todayClockedOut;
+}
+
+// ============ تحميل بيانات الموظف ============
+async function loadEmployee() {
+  if (!empId) {
+    showError('رابط غير صحيح، تأكد من الرابط الذي تم إرساله لك');
+    return;
+  }
+
+  try {
+    const res = await jsonpRequest('getEmployee', { empId });
+
+    if (!res.success) {
+      showError(res.message);
+      return;
+    }
+
+    document.getElementById('empName').textContent = res.name;
+    document.getElementById('empIdDisplay').textContent = res.empId;
+
+    renderBalances(res.balances);
+
+    document.getElementById('loadingState').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+
+    await loadTodayStatus();
+    requestLocation();
+
+  } catch (err) {
+    showError('تعذر الاتصال بالسيرفر، تأكد من اتصال الإنترنت وحاول مرة أخرى');
+  }
+}
+
+// ============ عرض رصيد الإجازات ============
+function renderBalances(balances) {
+  const labels = {
+    annual: 'سنوية', sick: 'مرضية', emergency: 'طارئة',
+    unpaidUsed: 'بدون مرتب (مستخدم)', official: 'رسمية / مناسبات'
+  };
+  let html = '<div class="status-row" style="border-top:none;padding-top:0;flex-wrap:wrap;gap:10px 0;">';
+  for (const key in labels) {
+    html += `<div class="status-item" style="flex:1 1 33%;">
+      <div class="label">${labels[key]}</div>
+      <div class="value">${balances[key]}</div>
+    </div>`;
+  }
+  html += '</div>';
+  document.getElementById('balancesBox').innerHTML = html;
+}
+
+// ============ تحميل حالة اليوم ============
+async function loadTodayStatus() {
+  try {
+    const res = await jsonpRequest('getTodayStatus', { empId });
+
+    if (res.clockIn) {
+      document.getElementById('clockInValue').textContent = res.clockIn;
+      todayClockedIn = true;
+      document.getElementById('btnClockIn').classList.add('hidden');
+      document.getElementById('btnClockOut').classList.remove('hidden');
+    } else {
+      document.getElementById('clockInValue').innerHTML = '<span class="empty">—</span>';
+    }
+
+    if (res.clockOut) {
+      document.getElementById('clockOutValue').textContent = res.clockOut;
+      document.getElementById('totalHoursValue').textContent = res.totalHours;
+      todayClockedOut = true;
+      document.getElementById('btnClockOut').classList.add('hidden');
+    } else {
+      document.getElementById('clockOutValue').innerHTML = '<span class="empty">—</span>';
+      document.getElementById('totalHoursValue').innerHTML = '<span class="empty">—</span>';
+    }
+
+    updateButtonStates();
+  } catch (err) {
+    // فشل صامت، الأزرار تفضل بحالتها الافتراضية
+  }
+}
+
+// ============ تسجيل حضور ============
+async function doClockIn() {
+  const btn = document.getElementById('btnClockIn');
+  btn.disabled = true;
+  btn.innerHTML = 'جاري التسجيل...<span class="spinner"></span>';
+
+  const comment = document.getElementById('commentInput').value.trim();
+
+  try {
+    const res = await jsonpRequest('clockIn', {
+      empId, lat: currentLat, lng: currentLng, comment
+    });
+
+    if (res.success) {
+      showToast(res.message, 'success');
+      if (!res.withinRange) {
+        showToast('تنبيه: تم التسجيل من خارج نطاق الموقع المسموح', 'error');
+      }
+      await loadTodayStatus();
+      document.getElementById('commentInput').value = '';
+    } else {
+      showToast(res.message, 'error');
+      btn.disabled = false;
+    }
+  } catch (err) {
+    showToast('تعذر الاتصال بالسيرفر، حاول مرة أخرى', 'error');
+    btn.disabled = false;
+  }
+
+  btn.innerHTML = 'تسجيل حضور';
+}
+
+// ============ تسجيل انصراف ============
+async function doClockOut() {
+  const btn = document.getElementById('btnClockOut');
+  btn.disabled = true;
+  btn.innerHTML = 'جاري التسجيل...<span class="spinner"></span>';
+
+  const comment = document.getElementById('commentInput').value.trim();
+
+  try {
+    const res = await jsonpRequest('clockOut', {
+      empId, lat: currentLat, lng: currentLng, comment
+    });
+
+    if (res.success) {
+      showToast(res.message, 'success');
+      await loadTodayStatus();
+      document.getElementById('commentInput').value = '';
+    } else {
+      showToast(res.message, 'error');
+      btn.disabled = false;
+    }
+  } catch (err) {
+    showToast('تعذر الاتصال بالسيرفر، حاول مرة أخرى', 'error');
+    btn.disabled = false;
+  }
+
+  btn.innerHTML = 'تسجيل انصراف';
+}
+
+// ============ إرسال طلب إجازة ============
+async function submitLeaveRequest() {
+  const leaveType = document.getElementById('leaveType').value;
+  const startDate = document.getElementById('leaveStart').value;
+  const endDate = document.getElementById('leaveEnd').value;
+  const comment = document.getElementById('leaveComment').value.trim();
+
+  if (!startDate || !endDate) {
+    showToast('يرجى تحديد تاريخ البداية والنهاية', 'error');
+    return;
+  }
+
+  if (new Date(endDate) < new Date(startDate)) {
+    showToast('تاريخ النهاية لا يمكن أن يكون قبل تاريخ البداية', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btnSubmitLeave');
+  btn.disabled = true;
+  btn.innerHTML = 'جاري الإرسال...<span class="spinner"></span>';
+
+  try {
+    const res = await jsonpRequest('requestLeave', {
+      empId, leaveType, startDate, endDate, comment
+    });
+
+    if (res.success) {
+      showToast(res.message, 'success');
+      document.getElementById('leaveStart').value = '';
+      document.getElementById('leaveEnd').value = '';
+      document.getElementById('leaveComment').value = '';
+      loadLeaveHistory();
+    } else {
+      showToast(res.message, 'error');
+    }
+  } catch (err) {
+    showToast('تعذر الاتصال بالسيرفر، حاول مرة أخرى', 'error');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = 'إرسال طلب الإجازة';
+}
+
+// ============ تحميل سجل الإجازات ============
+async function loadLeaveHistory() {
+  const box = document.getElementById('leaveHistoryBox');
+  try {
+    const res = await jsonpRequest('getLeaveHistory', { empId });
+
+    if (!res.history || res.history.length === 0) {
+      box.innerHTML = '<div class="empty-state">لا يوجد طلبات إجازة سابقة</div>';
+      return;
+    }
+
+    const typeLabels = {
+      Annual: 'سنوية', Sick: 'مرضية', Emergency: 'طارئة',
+      Unpaid: 'بدون مرتب', Official: 'رسمية / مناسبات'
+    };
+    const statusLabels = { Pending: 'في الانتظار', Approved: 'موافَق عليها', Rejected: 'مرفوضة' };
+
+    let html = '';
+    res.history.forEach(item => {
+      html += `<div class="leave-item">
+        <div>
+          <div class="type">${typeLabels[item.type] || item.type}</div>
+          <div class="dates">${item.startDate} → ${item.endDate} (${item.days} يوم)</div>
+        </div>
+        <span class="badge ${item.status}">${statusLabels[item.status] || item.status}</span>
+      </div>`;
+    });
+    box.innerHTML = html;
+  } catch (err) {
+    box.innerHTML = '<div class="empty-state">تعذر تحميل السجل</div>';
+  }
+}
+
+// ============ عرض رسالة خطأ ============
+function showError(message) {
+  document.getElementById('loadingState').classList.add('hidden');
+  document.getElementById('errorText').textContent = message;
+  document.getElementById('errorState').classList.remove('hidden');
+}
+
+// ============ بدء التطبيق ============
+loadEmployee();
+
+// ============ تسجيل Service Worker (PWA) ============
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  });
+}
+
+</script>
+
+</body>
+</html>
