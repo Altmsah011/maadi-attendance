@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#234f3a">
 <title>تسجيل الحضور والانصراف</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root {
   --ink: #1c1f26;
@@ -14,6 +17,7 @@
   --moss: #2f6b4f;
   --moss-dark: #234f3a;
   --clay: #b5503a;
+  --amber: #b8842a;
   --muted: #6b6657;
 }
 * { box-sizing: border-box; }
@@ -271,17 +275,21 @@ body {
 </div>
 <div class="toast" id="toast"></div>
 <script>
-const API_URL = 'https://script.google.com/macros/s/.../exec'; // ⚠️ غيّر هذا الرابط
+// ======================== الإعدادات ========================
+const API_URL = 'https://script.google.com/macros/s/AKfycbzSmXM5n_9pKmD0htkicyy0vtzgT2moOYxbiAw3yPgF_-xDfD1DTz5qdxcY4SmrSHBi/exec';
+
 const params = new URLSearchParams(window.location.search);
 const empId = params.get('emp');
 let currentLat = null, currentLng = null, locationReady = false;
 let todayClockedIn = false, todayClockedOut = false;
 
+// ======================== الساعة ========================
 function updateClock() {
   document.getElementById('liveClock').textContent = new Date().toLocaleTimeString('ar-EG', { hour12: false });
 }
 setInterval(updateClock, 1000); updateClock();
 
+// ======================== JSONP ========================
 function jsonpRequest(action, extra = {}) {
   return new Promise((resolve, reject) => {
     const cb = 'cb_' + Date.now() + '_' + Math.floor(Math.random()*10000);
@@ -297,6 +305,7 @@ function jsonpRequest(action, extra = {}) {
   });
 }
 
+// ======================== Toast ========================
 function showToast(msg, type='') {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -304,6 +313,7 @@ function showToast(msg, type='') {
   setTimeout(() => t.className = 'toast ' + type, 3200);
 }
 
+// ======================== تبديل التابات ========================
 function switchTab(tab) {
   document.getElementById('tabAttendance').classList.toggle('active', tab==='attendance');
   document.getElementById('tabLeave').classList.toggle('active', tab==='leave');
@@ -312,6 +322,7 @@ function switchTab(tab) {
   if (tab==='leave') loadLeaveHistory();
 }
 
+// ======================== الموقع ========================
 function requestLocation() {
   const pill = document.getElementById('locPill'), text = document.getElementById('locText');
   if (!navigator.geolocation) { pill.className='loc-pill bad'; text.textContent='المتصفح لا يدعم الموقع'; return; }
@@ -322,6 +333,7 @@ function requestLocation() {
   );
 }
 
+// ======================== الأزرار ========================
 function updateButtonStates() {
   const btnIn = document.getElementById('btnClockIn'), btnOut = document.getElementById('btnClockOut');
   const hasPin = document.getElementById('userPin').value.trim().length > 0;
@@ -329,6 +341,7 @@ function updateButtonStates() {
   btnOut.disabled = !locationReady || !todayClockedIn || todayClockedOut || !hasPin;
 }
 
+// ======================== تحميل الموظف ========================
 async function loadEmployee() {
   if (!empId) { showError('رابط غير صحيح'); return; }
   try {
@@ -354,6 +367,7 @@ async function loadEmployee() {
   } catch(err) { showError('تعذر الاتصال بالسيرفر'); }
 }
 
+// ======================== الرصيد ========================
 function renderBalances(bal) {
   const labels = { annual:'سنوية', sick:'مرضية', emergency:'طارئة', unpaidUsed:'بدون مرتب (مستخدم)', official:'رسمية' };
   let html = '<div class="status-row" style="border-top:none;padding-top:0;flex-wrap:wrap;gap:10px 0;">';
@@ -362,6 +376,7 @@ function renderBalances(bal) {
   document.getElementById('balancesBox').innerHTML = html;
 }
 
+// ======================== حالة اليوم ========================
 async function loadTodayStatus() {
   try {
     const res = await jsonpRequest('getTodayStatus', {});
@@ -387,6 +402,7 @@ async function loadTodayStatus() {
   } catch(err) {}
 }
 
+// ======================== تسجيل حضور ========================
 async function doClockIn() {
   const btn = document.getElementById('btnClockIn');
   btn.disabled = true; btn.innerHTML = 'جاري التسجيل...<span class="spinner"></span>';
@@ -403,6 +419,7 @@ async function doClockIn() {
   btn.innerHTML = 'تسجيل حضور'; btn.disabled = false;
 }
 
+// ======================== تسجيل انصراف ========================
 async function doClockOut() {
   const btn = document.getElementById('btnClockOut');
   btn.disabled = true; btn.innerHTML = 'جاري التسجيل...<span class="spinner"></span>';
@@ -415,6 +432,7 @@ async function doClockOut() {
   btn.innerHTML = 'تسجيل انصراف'; btn.disabled = false;
 }
 
+// ======================== طلب إجازة ========================
 async function submitLeaveRequest() {
   const type = document.getElementById('leaveType').value;
   const start = document.getElementById('leaveStart').value;
@@ -438,6 +456,7 @@ async function submitLeaveRequest() {
   btn.disabled = false; btn.innerHTML = 'إرسال طلب الإجازة';
 }
 
+// ======================== سجل الإجازات ========================
 async function loadLeaveHistory() {
   const box = document.getElementById('leaveHistoryBox');
   try {
@@ -454,13 +473,17 @@ async function loadLeaveHistory() {
   } catch(err) { box.innerHTML = '<div class="empty-state">تعذر تحميل السجل</div>'; }
 }
 
+// ======================== عرض خطأ ========================
 function showError(msg) {
   document.getElementById('loadingState').classList.add('hidden');
   document.getElementById('errorText').textContent = msg;
   document.getElementById('errorState').classList.remove('hidden');
 }
 
+// ======================== بدء التطبيق ========================
 loadEmployee();
+
+// ======================== Service Worker ========================
 if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('service-worker.js').catch(()=>{}); }); }
 </script>
 </body>
