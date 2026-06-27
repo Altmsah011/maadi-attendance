@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة تحكم المدير - الإجازات</title>
+<style>
+body { background: #f4f4f4; font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; direction: rtl; }
+.container { max-width: 800px; margin: auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+h2 { color: #234f3a; margin-top: 0; }
+.login-area { text-align: center; padding: 30px 0; }
+.login-area input { padding: 12px; width: 220px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; margin-left: 10px; }
+.login-area button { padding: 12px 30px; background: #234f3a; color: #fff; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
+.pending-item { border: 1px solid #e3ded2; padding: 15px; margin-bottom: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; background: #fafaf8; }
+.pending-item .info { flex: 1; }
+.pending-item .info strong { font-size: 16px; }
+.pending-item .info .detail { font-size: 13px; color: #6b6657; margin-top: 4px; }
+.btn { padding: 8px 18px; border: none; border-radius: 6px; color: #fff; cursor: pointer; margin: 3px; font-size: 14px; }
+.btn-approve { background: #2f6b4f; }
+.btn-reject { background: #b5503a; }
+.empty-state { text-align: center; color: #6b6657; padding: 30px; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1c1f26; color: #fff; padding: 12px 24px; border-radius: 8px; opacity: 0; transition: opacity 0.3s; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>📋 لوحة تحكم المدير - طلبات الإجازات</h2>
+  <div id="loginArea" class="login-area">
+    <input type="password" id="adminPinInput" placeholder="كلمة مرور المدير">
+    <button onclick="loadPending()">عرض الطلبات</button>
+  </div>
+  <div id="listArea" style="margin-top:20px;"><div class="empty-state">أدخل كلمة المرور لعرض الطلبات</div></div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+// ======================== الإعدادات ========================
+const API_URL = 'https://script.google.com/macros/s/AKfycbzSmXM5n_9pKmD0htkicyy0vtzgT2moOYxbiAw3yPgF_-xDfD1DTz5qdxcY4SmrSHBi/exec';
+
+// ======================== Toast ========================
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show';
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+// ======================== JSONP ========================
+function jsonp(action, params) {
+  return new Promise((resolve) => {
+    const cb = 'cb_' + Date.now();
+    let url = API_URL + '?action=' + action + '&callback=' + cb;
+    for (const k in params) url += '&' + k + '=' + encodeURIComponent(params[k]);
+    window[cb] = (data) => { delete window[cb]; document.body.removeChild(script); resolve(data); };
+    const script = document.createElement('script');
+    script.src = url;
+    script.onerror = () => { delete window[cb]; document.body.removeChild(script); resolve({ success: false, message: 'فشل الاتصال' }); };
+    document.body.appendChild(script);
+  });
+}
+
+// ======================== عرض الطلبات ========================
+async function loadPending() {
+  const pin = document.getElementById('adminPinInput').value;
+  if (!pin) { showToast('أدخل كلمة المرور'); return; }
+  const res = await jsonp('getPendingLeaves', { adminPin: pin });
+  if (!res.success) { showToast(res.message); document.getElementById('listArea').innerHTML = `<div class="empty-state">${res.message}</div>`; return; }
+  const area = document.getElementById('listArea');
+  if (!res.pending.length) { area.innerHTML = '<div class="empty-state">✨ لا توجد طلبات معلقة</div>'; return; }
+  let html = '';
+  res.pending.forEach(item => {
+    html += `<div class="pending-item">
+      <div class="info">
+        <strong>${item.name}</strong> (${item.empId})<br>
+        <span class="detail">${item.type} | من ${item.startDate} إلى ${item.endDate} (${item.days} يوم)</span><br>
+        ${item.comment ? '<span class="detail">💬 '+item.comment+'</span>' : ''}
+      </div>
+      <div>
+        <button class="btn btn-approve" onclick="handleAction('${item.id}', 'approveLeave')">✅ موافقة</button>
+        <button class="btn btn-reject" onclick="handleAction('${item.id}', 'rejectLeave')">❌ رفض</button>
+      </div>
+    </div>`;
+  });
+  area.innerHTML = html;
+}
+
+// ======================== معالجة الطلب ========================
+async function handleAction(requestId, action) {
+  if (!confirm('تأكيد العملية؟')) return;
+  const pin = document.getElementById('adminPinInput').value;
+  const res = await jsonp(action, { requestId: requestId, adminPin: pin });
+  showToast(res.message);
+  if (res.success) loadPending();
+}
+</script>
+</body>
+</html>
