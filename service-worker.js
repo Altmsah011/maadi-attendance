@@ -1,6 +1,7 @@
 const CACHE_NAME = 'attendance-app-v1';
 const CACHE_FILES = [
   './index.html',
+  './admin.html',
   './manifest.json'
 ];
 
@@ -21,14 +22,8 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // لا تكاش طلبات الـ API (Apps Script) - دايماً لايف
-  if (event.request.url.includes('script.google.com')) {
-    return;
-  }
-
+  if (event.request.url.includes('script.google.com')) return;
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request);
-    })
+    caches.match(event.request).then((cached) => cached || fetch(event.request))
   );
 });
