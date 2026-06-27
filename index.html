@@ -43,14 +43,20 @@ body {
   margin-bottom: 18px;
 }
 .brand .clock {
-  font-size: 13px;
-  color: var(--muted);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--moss-dark);
   letter-spacing: 0.5px;
+  background: var(--card);
+  padding: 6px 14px;
+  border-radius: 20px;
+  display: inline-block;
+  border: 1px solid var(--line);
 }
 .brand .title {
   font-size: 20px;
   font-weight: 700;
-  margin-top: 4px;
+  margin-top: 6px;
   color: var(--moss-dark);
 }
 .card {
@@ -127,6 +133,14 @@ body {
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn-in { background: var(--moss); color: #fff; }
 .btn-out { background: var(--clay); color: #fff; }
+.btn-refresh {
+  background: transparent;
+  border: 1.5px solid var(--moss);
+  color: var(--moss);
+  padding: 10px;
+  font-size: 14px;
+  margin-top: 8px;
+}
 .tabs {
   display: flex;
   gap: 8px;
@@ -238,6 +252,7 @@ body {
         </div>
         <button class="btn btn-in" id="btnClockIn" onclick="doClockIn()" disabled>تسجيل حضور</button>
         <button class="btn btn-out hidden" id="btnClockOut" onclick="doClockOut()" disabled>تسجيل انصراف</button>
+        <button class="btn btn-refresh" onclick="refreshStatus()">↻ تحديث الحالة</button>
       </div>
     </div>
     <div id="panelLeave" class="hidden">
@@ -283,11 +298,41 @@ const empId = params.get('emp');
 let currentLat = null, currentLng = null, locationReady = false;
 let todayClockedIn = false, todayClockedOut = false;
 
-// ======================== الساعة ========================
-function updateClock() {
-  document.getElementById('liveClock').textContent = new Date().toLocaleTimeString('ar-EG', { hour12: false });
+// ======================== دوال تنسيق الوقت المصري ========================
+function formatEgyptianTime(date) {
+  // الساعة بتوقيت مصر (Africa/Cairo)
+  const options = {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Africa/Cairo'
+  };
+  let timeStr = date.toLocaleTimeString('ar-EG', options);
+  // تحويل ص/م إلى صباحاً/مساءً
+  timeStr = timeStr.replace('ص', 'صباحاً').replace('م', 'مساءً');
+  // نحدد الفترة بشكل وصفي
+  const hour = date.getHours();
+  let period = '';
+  if (hour >= 5 && hour < 12) period = 'صباحاً';
+  else if (hour >= 12 && hour < 16) period = 'ظهراً';
+  else if (hour >= 16 && hour < 20) period = 'عصراً';
+  else if (hour >= 20 && hour < 24) period = 'مساءً';
+  else period = 'صباحاً';
+  // نعيد بناء الوقت مع الفترة الوصفية
+  let hours = date.getHours();
+  let minutes = date.getMinutes();
+  let ampm = hours >= 12 ? 'م' : 'ص';
+  let h12 = hours % 12 || 12;
+  return `${h12}:${minutes.toString().padStart(2,'0')} ${period}`;
 }
-setInterval(updateClock, 1000); updateClock();
+
+// ======================== الساعة الحية ========================
+function updateClock() {
+  const now = new Date();
+  document.getElementById('liveClock').textContent = formatEgyptianTime(now);
+}
+setInterval(updateClock, 1000);
+updateClock();
 
 // ======================== JSONP ========================
 function jsonpRequest(action, extra = {}) {
@@ -339,6 +384,17 @@ function updateButtonStates() {
   const hasPin = document.getElementById('userPin').value.trim().length > 0;
   btnIn.disabled = !locationReady || todayClockedIn || !hasPin;
   btnOut.disabled = !locationReady || !todayClockedIn || todayClockedOut || !hasPin;
+  // التحكم في إظهار/إخفاء الأزرار
+  if (todayClockedIn && !todayClockedOut) {
+    btnIn.classList.add('hidden');
+    btnOut.classList.remove('hidden');
+  } else if (todayClockedIn && todayClockedOut) {
+    btnIn.classList.add('hidden');
+    btnOut.classList.add('hidden');
+  } else {
+    btnIn.classList.remove('hidden');
+    btnOut.classList.add('hidden');
+  }
 }
 
 // ======================== تحميل الموظف ========================
@@ -381,25 +437,41 @@ async function loadTodayStatus() {
   try {
     const res = await jsonpRequest('getTodayStatus', {});
     if (!res.success) { if (res.message.includes('الرقم')) showToast('الرقم السري غير صحيح','error'); return; }
+    
+    // عرض وقت الحضور بصيغة مصرية
     if (res.clockIn) {
-      document.getElementById('clockInValue').textContent = res.clockIn;
+      // تحويل الساعة من النص إلى Date لتنسيقها
+      const timeParts = res.clockIn.split(':');
+      const dateObj = new Date();
+      dateObj.setHours(parseInt(timeParts[0]), parseInt(timeParts[1]), parseInt(timeParts[2] || 0));
+      document.getElementById('clockInValue').textContent = formatEgyptianTime(dateObj);
       todayClockedIn = true;
-      document.getElementById('btnClockIn').classList.add('hidden');
-      document.getElementById('btnClockOut').classList.remove('hidden');
     } else {
       document.getElementById('clockInValue').innerHTML = '<span class="empty">—</span>';
+      todayClockedIn = false;
     }
+    
     if (res.clockOut) {
-      document.getElementById('clockOutValue').textContent = res.clockOut;
-      document.getElementById('totalHoursValue').textContent = res.totalHours;
+      const timeParts = res.clockOut.split(':');
+      const dateObj = new Date();
+      dateObj.setHours(parseInt(timeParts[0]), parseInt(timeParts[1]), parseInt(timeParts[2] || 0));
+      document.getElementById('clockOutValue').textContent = formatEgyptianTime(dateObj);
+      document.getElementById('totalHoursValue').textContent = res.totalHours || '0.00';
       todayClockedOut = true;
-      document.getElementById('btnClockOut').classList.add('hidden');
     } else {
       document.getElementById('clockOutValue').innerHTML = '<span class="empty">—</span>';
       document.getElementById('totalHoursValue').innerHTML = '<span class="empty">—</span>';
+      todayClockedOut = false;
     }
     updateButtonStates();
-  } catch(err) {}
+  } catch(err) { console.error(err); }
+}
+
+// ======================== تحديث يدوي ========================
+async function refreshStatus() {
+  showToast('جاري تحديث الحالة...', '');
+  await loadTodayStatus();
+  showToast('تم التحديث', 'success');
 }
 
 // ======================== تسجيل حضور ========================
@@ -412,7 +484,7 @@ async function doClockIn() {
     if (res.success) {
       showToast(res.message, 'success');
       if (!res.withinRange) showToast('تنبيه: خارج النطاق', 'error');
-      await loadTodayStatus();
+      await loadTodayStatus(); // تحديث الواجهة
       document.getElementById('commentInput').value = '';
     } else showToast(res.message, 'error');
   } catch(err) { showToast('تعذر الاتصال', 'error'); }
@@ -426,8 +498,11 @@ async function doClockOut() {
   const comment = document.getElementById('commentInput').value.trim();
   try {
     const res = await jsonpRequest('clockOut', { lat: currentLat, lng: currentLng, comment });
-    if (res.success) { showToast(res.message, 'success'); await loadTodayStatus(); document.getElementById('commentInput').value = ''; }
-    else showToast(res.message, 'error');
+    if (res.success) { 
+      showToast(res.message, 'success'); 
+      await loadTodayStatus(); 
+      document.getElementById('commentInput').value = ''; 
+    } else showToast(res.message, 'error');
   } catch(err) { showToast('تعذر الاتصال', 'error'); }
   btn.innerHTML = 'تسجيل انصراف'; btn.disabled = false;
 }
