@@ -9,6 +9,7 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
+/* نفس الـ CSS السابق، لا تغيير */
 :root {
   --ink: #1c1f26;
   --paper: #f6f4ef;
@@ -256,6 +257,7 @@ body {
       </div>
     </div>
     <div id="panelLeave" class="hidden">
+      <!-- نفس محتوى الإجازات السابق -->
       <div class="card">
         <div class="field">
           <label for="leaveType">نوع الإجازة</label>
@@ -296,40 +298,26 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzSmXM5n_9pKmD0htkicyy0
 const params = new URLSearchParams(window.location.search);
 const empId = params.get('emp');
 let currentLat = null, currentLng = null, locationReady = false;
-let todayClockedIn = false, todayClockedOut = false;
+let todayClockedIn = false;
+let todayClockedOut = false;
 
-// ======================== دوال تنسيق الوقت المصري ========================
-function formatEgyptianTime(date) {
-  // الساعة بتوقيت مصر (Africa/Cairo)
-  const options = {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-    timeZone: 'Africa/Cairo'
-  };
-  let timeStr = date.toLocaleTimeString('ar-EG', options);
-  // تحويل ص/م إلى صباحاً/مساءً
-  timeStr = timeStr.replace('ص', 'صباحاً').replace('م', 'مساءً');
-  // نحدد الفترة بشكل وصفي
-  const hour = date.getHours();
-  let period = '';
-  if (hour >= 5 && hour < 12) period = 'صباحاً';
-  else if (hour >= 12 && hour < 16) period = 'ظهراً';
-  else if (hour >= 16 && hour < 20) period = 'عصراً';
-  else if (hour >= 20 && hour < 24) period = 'مساءً';
-  else period = 'صباحاً';
-  // نعيد بناء الوقت مع الفترة الوصفية
-  let hours = date.getHours();
-  let minutes = date.getMinutes();
-  let ampm = hours >= 12 ? 'م' : 'ص';
-  let h12 = hours % 12 || 12;
-  return `${h12}:${minutes.toString().padStart(2,'0')} ${period}`;
+// ======================== دوال تنسيق الوقت المصري (للعرض فقط) ========================
+function formatEgyptianTime(dateStr) {
+  if (!dateStr) return '—';
+  // dateStr قادم من الخادم بصيغة "12:34:56 صباحاً" أو "01:23:45 مساءً"
+  // نعرضه كما هو لأنه جاهز
+  return dateStr;
 }
 
 // ======================== الساعة الحية ========================
 function updateClock() {
   const now = new Date();
-  document.getElementById('liveClock').textContent = formatEgyptianTime(now);
+  // نعرض الوقت بتنسيق 12 ساعة مع صباحاً/مساءً من الجهاز
+  const hours = now.getHours();
+  const minutes = now.getMinutes();
+  const ampm = hours >= 12 ? 'مساءً' : 'صباحاً';
+  const h12 = hours % 12 || 12;
+  document.getElementById('liveClock').textContent = `${h12}:${minutes.toString().padStart(2,'0')} ${ampm}`;
 }
 setInterval(updateClock, 1000);
 updateClock();
@@ -380,18 +368,25 @@ function requestLocation() {
 
 // ======================== الأزرار ========================
 function updateButtonStates() {
-  const btnIn = document.getElementById('btnClockIn'), btnOut = document.getElementById('btnClockOut');
+  const btnIn = document.getElementById('btnClockIn');
+  const btnOut = document.getElementById('btnClockOut');
   const hasPin = document.getElementById('userPin').value.trim().length > 0;
+  
+  // التحكم في التمكين/التعطيل
   btnIn.disabled = !locationReady || todayClockedIn || !hasPin;
   btnOut.disabled = !locationReady || !todayClockedIn || todayClockedOut || !hasPin;
-  // التحكم في إظهار/إخفاء الأزرار
+  
+  // التحكم في الإظهار/الإخفاء
   if (todayClockedIn && !todayClockedOut) {
+    // حضور مسجل، انصراف غير مسجل → إظهار زر الانصراف
     btnIn.classList.add('hidden');
     btnOut.classList.remove('hidden');
   } else if (todayClockedIn && todayClockedOut) {
+    // حضور وانصراف مسجلين → إخفاء الأزرار كلها (أو إظهار رسالة)
     btnIn.classList.add('hidden');
     btnOut.classList.add('hidden');
   } else {
+    // لا حضور → إظهار زر الحضور
     btnIn.classList.remove('hidden');
     btnOut.classList.add('hidden');
   }
@@ -436,15 +431,14 @@ function renderBalances(bal) {
 async function loadTodayStatus() {
   try {
     const res = await jsonpRequest('getTodayStatus', {});
-    if (!res.success) { if (res.message.includes('الرقم')) showToast('الرقم السري غير صحيح','error'); return; }
+    if (!res.success) { 
+      if (res.message.includes('الرقم')) showToast('الرقم السري غير صحيح','error'); 
+      return; 
+    }
     
-    // عرض وقت الحضور بصيغة مصرية
+    // تحديث المتغيرات بناءً على الرد
     if (res.clockIn) {
-      // تحويل الساعة من النص إلى Date لتنسيقها
-      const timeParts = res.clockIn.split(':');
-      const dateObj = new Date();
-      dateObj.setHours(parseInt(timeParts[0]), parseInt(timeParts[1]), parseInt(timeParts[2] || 0));
-      document.getElementById('clockInValue').textContent = formatEgyptianTime(dateObj);
+      document.getElementById('clockInValue').textContent = formatEgyptianTime(res.clockIn);
       todayClockedIn = true;
     } else {
       document.getElementById('clockInValue').innerHTML = '<span class="empty">—</span>';
@@ -452,10 +446,7 @@ async function loadTodayStatus() {
     }
     
     if (res.clockOut) {
-      const timeParts = res.clockOut.split(':');
-      const dateObj = new Date();
-      dateObj.setHours(parseInt(timeParts[0]), parseInt(timeParts[1]), parseInt(timeParts[2] || 0));
-      document.getElementById('clockOutValue').textContent = formatEgyptianTime(dateObj);
+      document.getElementById('clockOutValue').textContent = formatEgyptianTime(res.clockOut);
       document.getElementById('totalHoursValue').textContent = res.totalHours || '0.00';
       todayClockedOut = true;
     } else {
